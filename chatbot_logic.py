@@ -28,12 +28,10 @@ def demo_chatbot():
     )
     return demo_llm
 
-# ✅ Generate conversational response
-def generate_text_response(input_text):
-    llm_chain_data = demo_chatbot()
-    memory = ConversationSummaryBufferMemory(llm=llm_chain_data, max_token_limit=300)
-    llm_conversation = ConversationChain(llm=llm_chain_data, memory=memory, verbose=True)
-    response = llm_conversation.invoke(input_text)
+# ✅ Generate conversational response using persistent LLM and Memory
+def generate_text_response(input_text, llm, memory):
+    llm_conversation = ConversationChain(llm=llm, memory=memory, verbose=True)
+    response = llm_conversation.invoke(input=input_text)
     return response['response']
 
 # ✅ Generate image using Titan and upload to S3
@@ -64,7 +62,7 @@ def generate_image_response(prompt):
             if image_bytes:
                 images_bytes.append(image_bytes)
 
-                bucket_name = 'movieposterpublic'  # ✅ Bucket must exist
+                bucket_name = 'movieposterpublic'  # ✅ Ensure bucket exists
                 s3_object_key = f'generated_image_{datetime.datetime.now().isoformat()}.png'
                 client_s3.put_object(
                     Bucket=bucket_name,
@@ -80,12 +78,6 @@ def generate_image_response(prompt):
 
     except Exception as e:
         return None, f"Error generating image: {str(e)}"
-
-# ✅ Memory wrapper
-def demo_memory():
-    llm_data = demo_chatbot()
-    memory = ConversationSummaryBufferMemory(llm=llm_data, max_token_limit=300)
-    return memory
 
 # ✅ Text-to-Speech converter using gTTS
 def text_to_speech(text, filename="response.mp3"):
