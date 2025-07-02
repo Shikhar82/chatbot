@@ -1,7 +1,8 @@
 import streamlit as st
-import chatbot_backend as demo
+import chatbot_logic as demo
+from langchain.memory import ConversationSummaryBufferMemory
 
-# CSS Styling
+# === CSS Styling
 st.markdown("""
 <style>
 .blinking-arrow {
@@ -22,7 +23,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Title Section
+# === Title Section
 st.markdown("""
 <div style="text-align: center;">
     <h1>Welcome to Chatbot Shikhar AI 🤖</h1>
@@ -30,10 +31,10 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Blinking Arrow
+# === Blinking Arrow
 st.markdown('<div class="arrow-container"><span class="blinking-arrow">⬆️</span></div>', unsafe_allow_html=True)
 
-# Sidebar Options
+# === Sidebar Options
 with st.sidebar:
     st.header("Select a Function")
     option = st.radio("Choose an option:", (
@@ -43,9 +44,12 @@ with st.sidebar:
         "Speech-to-Text (Upload Audio)"
     ))
 
-# Session Setup
+# === Session Setup
+if 'llm' not in st.session_state:
+    st.session_state.llm = demo.demo_chatbot()
+
 if 'memory' not in st.session_state:
-    st.session_state.memory = demo.demo_memory()
+    st.session_state.memory = ConversationSummaryBufferMemory(llm=st.session_state.llm, max_token_limit=300)
 
 if 'chat_history' not in st.session_state:
     st.session_state.chat_history = []
@@ -64,7 +68,11 @@ if option == "Text-to-Text Generation":
             st.markdown(input_text)
         st.session_state.chat_history.append({"role": "user", "text": input_text})
 
-        response = demo.generate_text_response(input_text)
+        response = demo.generate_text_response(
+            input_text,
+            st.session_state.llm,
+            st.session_state.memory
+        )
         with st.chat_message("assistant"):
             st.markdown(response)
 
@@ -103,8 +111,7 @@ elif option == "Text-to-Speech Generator":
         else:
             st.warning("Please enter some text.")
 
-# == Speech-to-text (Upload Audio)
-
+# === SPEECH-TO-TEXT ===
 elif option == "Speech-to-Text (Upload Audio)":
     st.subheader("🎤 Speech-to-Text Transcription (WAV or MP3)")
 
@@ -121,7 +128,6 @@ elif option == "Speech-to-Text (Upload Audio)":
 
         try:
             with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_wav:
-                # Convert to WAV if MP3
                 if uploaded_file.name.endswith(".mp3"):
                     audio = AudioSegment.from_file(uploaded_file, format="mp3")
                     audio.export(temp_wav.name, format="wav")
